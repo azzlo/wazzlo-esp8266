@@ -1,13 +1,11 @@
 /**
  * From:
    BasicHTTPClient.ino
-
     Created on: 24.05.2015
 
    Este codigo es modificado para enviar valores
    de un sensor a una api especificada en el codigo
    a travez del metodo PUT
-
 */
 
 #include <Arduino.h>
@@ -17,24 +15,40 @@
 #include <ESP8266WiFiMulti.h>
 
 #include <ESP8266HTTPClient.h>
+// Libreria para mejorar la medición y uso del HC-SR04 y otros
+#include <NewPing.h>
 
-#define USE_SERIAL Serial
 
-ESP8266WiFiMulti WiFiMulti;
+// ############################
+// #  CONFIGURACION!!!!!!!!!  #
+// ############################
 
 // Variables para sensor de ultrasonido
-const int Trigger = 2;
-const int Echo = 0;
+#define USE_SERIAL Serial
+#define TRIGGER_PIN  2  // Arduino pin tied to trigger pin on the ultrasonic sensor.
+#define ECHO_PIN     0  // Arduino pin tied to echo pin on the ultrasonic sensor.
+#define MAX_DISTANCE 450 // Maximum distance we want to ping for (in centimeters). Maximum sensor distance is rated at 400-500cm.
+
+const int DEVICE_ID = 1; // ID del dispositivo en la API
+const char URL_API[] = "http://wazzlo.herokuapp.com/containers"; // URL para actuazar con metodo PUT los valores del contenedor en la API
+const char WIFI_SSID[] = "o";
+const char WIFI_PASS[] = "SomosBonitos_";
+
+// ############################
+// #  FIN CONFIGURACION!!!!!  #
+// ############################
+
+ESP8266WiFiMulti WiFiMulti;
+NewPing sonar(TRIGGER_PIN, ECHO_PIN, MAX_DISTANCE);
 
 void setup() {
-  pinMode(Trigger, OUTPUT);
-  pinMode(Echo, INPUT);
-  digitalWrite(Trigger, LOW);
+  //pinMode(Trigger, OUTPUT);
+  //pinMode(Echo, INPUT);
+  //digitalWrite(Trigger, LOW);
 
   USE_SERIAL.begin(115200);
   // USE_SERIAL.setDebugOutput(true);
 
-  USE_SERIAL.println();
   USE_SERIAL.println();
   USE_SERIAL.println();
 
@@ -45,20 +59,16 @@ void setup() {
   }
 
   WiFi.mode(WIFI_STA);
-  WiFiMulti.addAP("o", "SomosBonitos_");
+  WiFiMulti.addAP(WIFI_SSID, WIFI_PASS);
 }
 
 void loop() {
-  long t; // Demora del eco
-  long d; // Distancia en CM
+  long distance; // Distancia en CM
   
-  // Vamos por el valor del sensor
-  digitalWrite(Trigger, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(Trigger, LOW);
-  
-  t = pulseIn(Echo, HIGH); // se obtiene el ancho del pulso
-  d = t/59; //escalamos el tiempo a una distancia en cm
+  delay(50);
+  distance = sonar.ping_cm();
+
+  USE_SERIAL.printf("ULTRASONIC SENSOR values is %ld", distance);
   
   // wait for WiFi connection
   if ((WiFiMulti.run() == WL_CONNECTED)) {
@@ -68,9 +78,11 @@ void loop() {
     USE_SERIAL.print("[HTTP] begin...\n");
     // configure traged server and url
     //http.begin("https://192.168.1.12/test.html", "7a 9c f4 db 40 d3 62 5a 6e 21 bc 5c cc 66 c8 3e a1 45 59 38"); //HTTPS
-    http.begin("http://192.168.6.121/water_devises/1"); //HTTP
+    char url[1024];
+    sprintf(url, "%s/%d", URL_API, DEVICE_ID);
+    http.begin(url); //HTTP
 
-    USE_SERIAL.print("[HTTP] GET...\n");
+    USE_SERIAL.printf("[HTTP] PUT to %s\n", url);
     // start connection and send HTTP header
 
     //###########################
@@ -80,7 +92,7 @@ void loop() {
     //int httpCode = http.GET();
     //char data[] = "{\"water_devise\": {\"current_value\": \"\"}}";
     char data[1024];
-    snprintf(data, sizeof(data), "{\"water_devise\": {\"current_value\": \"%ld\"}}", d);
+    snprintf(data, sizeof(data), "{\"container\": {\"last_sensor\": \"%ld\"}}", distance);
     
     http.addHeader("Content-Type", "application/json");
     int httpCode = http.PUT(data);
@@ -92,7 +104,7 @@ void loop() {
     // httpCode will be negative on error
     if (httpCode > 0) {
       // HTTP header has been send and Server response header has been handled
-      USE_SERIAL.printf("[HTTP] GET... code: %d\n", httpCode);
+      USE_SERIAL.printf("[HTTP] PUT... code: %d\n", httpCode);
 
       // file found at server
       if (httpCode == HTTP_CODE_OK) {
@@ -100,7 +112,7 @@ void loop() {
         USE_SERIAL.println(payload);
       }
     } else {
-      USE_SERIAL.printf("[HTTP] GET... failed, error: %s\n", http.errorToString(httpCode).c_str());
+      USE_SERIAL.printf("[HTTP] PUT... failed, error: %s\n", http.errorToString(httpCode).c_str());
     }
 
     http.end();
