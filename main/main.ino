@@ -1,5 +1,5 @@
 /**
- * From:
+   From:
    BasicHTTPClient.ino
     Created on: 24.05.2015
 
@@ -29,10 +29,10 @@
 #define ECHO_PIN     0  // Arduino pin tied to echo pin on the ultrasonic sensor.
 #define MAX_DISTANCE 450 // Maximum distance we want to ping for (in centimeters). Maximum sensor distance is rated at 400-500cm.
 
-const int DEVICE_ID = 1; // ID del dispositivo en la API
+const int DEVICE_ID = 2; // ID del dispositivo en la API
 const char URL_API[] = "http://wazzlo.herokuapp.com/containers"; // URL para actuazar con metodo PUT los valores del contenedor en la API
-const char WIFI_SSID[] = "o";
-const char WIFI_PASS[] = "SomosBonitos_";
+const char WIFI_SSID[] = "PAGA_TU_iNTERNET";
+const char WIFI_PASS[] = "GU86ANas94Zi";
 
 // ############################
 // #  FIN CONFIGURACION!!!!!  #
@@ -64,12 +64,12 @@ void setup() {
 
 void loop() {
   long distance; // Distancia en CM
-  
+
   delay(50);
   distance = sonar.ping_cm();
 
   USE_SERIAL.printf("ULTRASONIC SENSOR values is %ld", distance);
-  
+
   // wait for WiFi connection
   if ((WiFiMulti.run() == WL_CONNECTED)) {
 
@@ -88,12 +88,12 @@ void loop() {
     //###########################
     //    START OF My changes   #
     //###########################
-    
+
     //int httpCode = http.GET();
     //char data[] = "{\"water_devise\": {\"current_value\": \"\"}}";
     char data[1024];
     snprintf(data, sizeof(data), "{\"container\": {\"last_sensor\": \"%ld\"}}", distance);
-    
+
     http.addHeader("Content-Type", "application/json");
     int httpCode = http.PUT(data);
 
